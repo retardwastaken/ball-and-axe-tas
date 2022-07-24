@@ -12,9 +12,11 @@ local rate = 0.001
 local paused = false
 local mode = 'free'
 local frame = 1
+local dead = false
 
 local ballCFrames = {...}
 local axeCFrames = {...}
+local axeVelocities = {...}
 local velocities = {...}
 local keybinds = {
 	['Toggle'] = Enum.KeyCode.E;
@@ -27,29 +29,72 @@ local keybinds = {
 	['FreeMode'] = Enum.KeyCode.Three
 }
 
+-- SplashText --
+local splashText = Drawing.new("Text")
+splashText.Center = true
+splashText.Font = 1
+splashText.Visible = true
+splashText.Size = 30
+splashText.Color = Color3.new(1,1,1)
+splashText.Text = 'TAS'
+splashText.Transparency = 0.35
+splashText.Position = Vector2.new(camera.ViewportSize.X / 2,camera.ViewportSize.Y / 2)
+
+-- Red ind --
+workspace.ind.Color = Color3.new(1,0,0)
+workspace.ind.Highlight.FillColor = Color3.new(1,0,0)
+workspace.ind.Highlight.OutlineColor = Color3.new(1,0,0)
+
+-- TAS --
+spawn(function()
+	while task.wait(rate) do
+		if workspace.playerModels:FindFirstChild(lp.Name) then
+			ball = workspace.playerModels:FindFirstChild(lp.Name)
+			dead = false
+		else
+			mode = 'create'
+			dead = true
+		end
+		if mode == 'create' and ball and dead == false then
+			if paused == false then
+				ball.ball.Anchored = false
+				ball.axe.Anchored = false
+				table.insert(ballCFrames,frame + 1,ball.ball.CFrame)
+				table.insert(velocities,frame + 1,ball.ball.Velocity)
+				table.insert(axeCFrames,frame + 1,ball.axe.CFrame)
+				table.insert(axeVelocities,frame + 1,ball.axe.Velocity)
+				frame += 1
+				table.foreach(ballCFrames,function(number)
+					if number > frame then
+						table.remove(ballCFrames,number)
+						--[[table.remove(velocities,number)
+						table.remove(axeCFrames,number)
+						table.remove(axeVelocities,number)]]
+					end
+				end)
+			else
+				ball.ball.Anchored = true
+				ball.axe.Anchored = true
+				if ballCFrames[frame] ~= nil then
+					ball.ball.CFrame = ballCFrames[frame]
+					ball.axe.CFrame = axeCFrames[frame]
+				end
+			end
+		end
+		if mode == 'test' and ballCFrames[frame] ~= nil and ball and dead == false then
+			ball.ball.Anchored = true
+			ball.axe.Anchored = true
+			ball.ball.CFrame = ballCFrames[frame]
+			ball.axe.CFrame = axeCFrames[frame]
+			if ballCFrames[frame + 1] ~= nil then
+				frame += 1
+			end
+		end
+	end
+end)
 -- Keypresses --
 uis.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Keyboard and uis:GetFocusedTextBox() == nil and ball then
-		if input.KeyCode == keybinds['Toggle'] then
-			paused = not paused
-            if workspace.playerModels:FindFirstChild(lp.Name) then
-				ball = workspace.playerModels:FindFirstChild(lp.Name)
-			else
-				return
-			end
-			if paused == true then
-				ball.ball.Anchored = true
-			else
-				ball.ball.Anchored = false
-				if velocities[frame] == nil then return end
-				ball.ball.Velocity = velocities[frame]
-				local bodyvel = Instance.new('BodyVelocity',ball.ball)
-				bodyvel.Velocity = velocities[frame]
-				bodyvel.MaxForce = Vector3.new(9999999999999,9999999999999,9999999999999)
-				game:GetService('RunService').RenderStepped:Wait()
-				bodyvel:Destroy()
-			end
-		end
 		if input.KeyCode == keybinds['FrameBack'] and ballCFrames[frame - 1] ~= nil then
 			if paused == true then
                 frame -= 1
@@ -88,60 +133,29 @@ uis.InputBegan:Connect(function(input)
 		if input.KeyCode == keybinds['FreeMode'] then
 			mode = 'free'
 		end
-	end
-end)
--- SplashText --
-local splashText = Drawing.new("Text")
-splashText.Center = true
-splashText.Font = 1
-splashText.Visible = true
-splashText.Size = 30
-splashText.Color = Color3.new(1,1,1)
-splashText.Text = 'TAS'
-splashText.Transparency = 0.35
-splashText.Position = Vector2.new(camera.ViewportSize.X / 2,camera.ViewportSize.Y / 2)
-
--- Red ind --
-workspace.ind.Color = Color3.new(1,0,0)
-workspace.ind.Highlight.FillColor = Color3.new(1,0,0)
-workspace.ind.Highlight.OutlineColor = Color3.new(1,0,0)
-
--- TAS --
-while task.wait(rate) do
-    if workspace.playerModels:FindFirstChild(lp.Name) then
-        ball = workspace.playerModels:FindFirstChild(lp.Name)
-    else
-		mode = 'create'
-    end
-	if mode == 'create' and ball then
-		if paused == false then
-			ball.ball.Anchored = false
-            ball.axe.Anchored = false
-			table.insert(ballCFrames,frame + 1,ball.ball.CFrame)
-			table.insert(velocities,frame + 1,ball.ball.Velocity)
-            table.insert(axeCFrames,frame + 1,ball.axe.CFrame)
-			frame += 1
-			table.foreach(ballCFrames,function(number)
-				if number > frame then
-					table.remove(ballCFrames,number)
-				end
-			end)
-		else
-			ball.ball.Anchored = true
-            ball.axe.Anchored = true
-			if ballCFrames[frame] ~= nil then
-				ball.ball.CFrame = ballCFrames[frame]
-                ball.axe.CFrame = axeCFrames[frame]
+		if input.KeyCode == keybinds['Toggle'] then
+			paused = not paused
+            if workspace.playerModels:FindFirstChild(lp.Name) then
+				ball = workspace.playerModels:FindFirstChild(lp.Name)
+			else
+				return
+			end
+			if paused == true then
+				ball.ball.Anchored = true
+			else
+				ball.ball.Anchored = false
+				if velocities[frame] == nil then return end
+				ball.ball.Velocity = velocities[frame]
+				local bodyvel = Instance.new('BodyVelocity',ball.ball)
+				bodyvel.Velocity = velocities[frame]
+				bodyvel.MaxForce = Vector3.new(9999999999999,9999999999999,9999999999999)
+				local bodyvel2 = Instance.new('BodyVelocity',ball.axe)
+				bodyvel2.Velocity = velocities[frame]
+				bodyvel2.MaxForce = Vector3.new(9999999999999,9999999999999,9999999999999)
+				game:GetService('RunService').RenderStepped:Wait()
+				bodyvel:Destroy()
+				bodyvel2:Destroy()
 			end
 		end
 	end
-	if mode == 'test' and ballCFrames[frame] ~= nil and ball then
-		ball.ball.Anchored = true
-        ball.axe.Anchored = true
-		ball.ball.CFrame = ballCFrames[frame]
-        ball.axe.CFrame = axeCFrames[frame]
-		if ballCFrames[frame + 1] ~= nil then
-			frame += 1
-		end
-	end
-end
+end)
